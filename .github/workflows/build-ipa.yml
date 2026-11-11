@@ -1,0 +1,43 @@
+
+name: Build iPadN IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore source
+        run: |
+          cat iPadN_source_part1.bin iPadN_source_part2.bin > source.zip
+          echo "49f7e60b8db5d7f9a9afae58e22aecd9cdde164c077deefbcd2d7409bb0947fb  source.zip" | shasum -a 256 -c -
+          unzip -q source.zip
+          mv ipadn-main project
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.5'
+          cache: false
+
+      - name: Setup Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add aarch64-apple-ios
+
+      - name: Build unsigned IPA
+        working-directory: project/iPadn-iOS
+        run: |
+          bash scripts/build_unsigned_ipa.sh
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: iPadN-AR-EN-unsigned
+          path: project/iPadn-iOS/build/iPadn-unsigned.ipa
+          if-no-files-found: error
+  
